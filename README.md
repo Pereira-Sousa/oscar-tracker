@@ -41,9 +41,10 @@ oscar-tracker/
 │   ├── indices.sql       # Índices B-Tree e parciais para otimização de C1 a C4
 │   └── seed.sql          # Carga inicial de edições, categorias e gêneros com pesos
 ├── scripts/
-│   ├── carga_tmdb.py     # Ingestão de filmes, créditos e provedores
-│   ├── carga_omdb.py     # Coleta de notas críticas e prêmios
-│   └── buzz_score.py     # Algoritmo de cálculo do Oscar Buzz Score
+│   ├── buzz_score.py     # Algoritmo matemático de cálculo do Oscar Buzz Score
+│   ├── carga_tmdb.py     # Ingestão de filmes, créditos, datas e provedores BR
+│   ├── carga_omdb.py     # Coleta de notas críticas, prêmios e recálculo
+│   └── executar_carga.py # Script unificado de carga (suporta --live e --demo)
 ├── docker-compose.yml    # Orquestração do PostgreSQL e volumes
 ├── requirements.txt      # Dependências Python
 ├── .env.example          # Modelo de variáveis de ambiente
@@ -56,7 +57,7 @@ oscar-tracker/
 
 ### 1. Pré-requisitos
 * Git instalado
-* Docker e Docker Compose instalados (Recomendado) **OU** PostgreSQL 16 instalado localmente
+* Docker e Docker Compose instalados (Recomendado) **OU** PostgreSQL 16 local
 * Python 3.11+ (para execução da aplicação e scripts)
 
 ---
@@ -75,7 +76,7 @@ POSTGRES_DB=oscar_tracker
 POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
 
-# Chaves das APIs Públicas (TMDB e OMDb)
+# Chaves das APIs Públicas (Necessárias apenas para carga --live)
 TMDB_API_KEY=sua_chave_aqui
 OMDB_API_KEY=sua_chave_aqui
 ```
@@ -84,64 +85,85 @@ OMDB_API_KEY=sua_chave_aqui
 
 ### 3. Inicialização do Banco de Dados
 
-#### Opção A: Via Docker Compose (Mais Rápido e Isolado)
-O `docker-compose.yml` já está configurado para inicializar automaticamente o PostgreSQL 16 e executar todos os scripts na ordem correta (`01_ddl.sql`, `02_indices.sql` e `03_seed.sql`):
+#### Opção A: Via Docker Compose (Recomendado)
+O `docker-compose.yml` inicializa automaticamente o PostgreSQL 16 e executa os scripts na ordem correta (`01_ddl.sql`, `02_indices.sql` e `03_seed.sql`):
 ```bash
 docker compose up -d
 ```
-Para verificar se o container está rodando:
-```bash
-docker compose ps
-```
-Para conferir os logs do banco:
-```bash
-docker compose logs -f db
-```
 
 #### Opção B: Via PostgreSQL Local (psql)
-Caso prefira usar o PostgreSQL instalado na sua máquina:
-1. Crie o banco de dados:
-   ```sql
-   CREATE DATABASE oscar_tracker;
-   ```
-2. Execute os scripts na ordem:
-   ```bash
-   psql -U oscar_user -d oscar_tracker -f database/ddl.sql
-   psql -U oscar_user -d oscar_tracker -f database/indices.sql
-   psql -U oscar_user -d oscar_tracker -f database/seed.sql
-   ```
+Caso utilize uma instância local do PostgreSQL:
+```bash
+# 1. Criação do banco
+createdb -U postgres oscar_tracker
+
+# 2. Execução das migrações e sementes
+psql -U postgres -d oscar_tracker -f database/ddl.sql
+psql -U postgres -d oscar_tracker -f database/indices.sql
+psql -U postgres -d oscar_tracker -f database/seed.sql
+```
 
 ---
 
 ### 4. Instalação das Dependências Python
 Crie um ambiente virtual e instale os pacotes:
 ```bash
-# Criar e ativar o ambiente virtual
 python -m venv venv
 
-# No Windows (PowerShell):
+# Windows (PowerShell):
 .\venv\Scripts\Activate.ps1
-# No Linux/macOS:
+# Linux/macOS:
 source venv/bin/activate
 
-# Instalar dependências
+# Instalar pacotes
 pip install -r requirements.txt
 ```
+
+---
+
+### 5. Execução dos Scripts de Carga e Ingestão de Dados
+
+O projeto conta com um script CLI unificado para popular o banco de dados:
+
+#### A. Modo Demonstração / Avaliação Rápida (`--demo`)
+> **Ideal para correção e testes em máquina limpa:** Popula o banco com uma amostra rica e fidedigna de obras concorrentes da temporada atual (Duna: Parte 2, Anora, Conclave, O Brutalista, Divertida Mente 2) com créditos reais, disponibilidade em streaming no Brasil e candidaturas associadas:
+```bash
+python scripts/executar_carga.py --demo
+```
+
+#### B. Modo em Tempo Real / APIs (`--live`)
+Consome diretamente os endpoints oficiais da **TMDB API** e **OMDb API**:
+```bash
+python scripts/executar_carga.py --ano 2026
+```
+
+---
+
+## 🧮 Algoritmo do Oscar Buzz Score
+
+Implementado em `scripts/buzz_score.py`, o índice consolidado varia de `0.00` a `100.00` e pondera 5 componentes de acordo com a proximidade histórica com as escolhas da Academia:
+
+$$\text{Score} = \frac{\sum (Peso_i \times Valor_i)}{\sum Peso_i}$$
+
+| Componente | Métrica Utilizada | Peso Base | Normalização (0 a 100) |
+| :--- | :--- | :---: | :--- |
+| **C (Crítica)** | Metascore | 0.35 | Valor nominal do Metascore (0 a 100) |
+| **F (Prêmios)** | Histórico OMDb | 0.20 | $\min(100, 10 \times \text{Vitórias} + 3 \times \text{Indicações})$ |
+| **G (Gênero)** | Afinidade Histórica | 0.20 | Média dos pesos dos gêneros da obra $\times 100$ |
+| **A (Público)** | Nota IMDb | 0.15 | $\text{imdb\_rating} \times 10$ |
+| **P (Popularidade)**| TMDB Popularity | 0.10 | $\min\left(100, \frac{\ln(1 + \text{pop})}{\ln(1 + 500)} \times 100\right)$ |
+
+* **Garantia de Existência:** Como Gênero (G) e Popularidade (P) sempre existem, o denominador nunca é nulo.
+* **Materialização:** O valor calculado é armazenado diretamente na coluna `filme.oscar_buzz_score` e indexado via B-Tree para ordenação rápida das consultas do painel.
 
 ---
 
 ## 📐 Projeto de Dados & Normalização (3FN)
 
 O esquema relacional implementado em `database/ddl.sql` segue rigorosamente a **Terceira Forma Normal (3FN)**:
-1. **Primeira Forma Normal (1FN):**
-   * Todos os atributos são atômicos.
-   * O atributo multivalorado de países de origem de um filme foi decomposto na tabela associativa `filme_pais_origem (tmdb_id, codigo_pais)`.
-2. **Segunda Forma Normal (2FN):**
-   * O esquema está em 1FN e nenhum atributo não-chave depende de parte de uma chave primária composta.
-   * Em entidades fracas e associativas como `candidatura (tmdb_id, id_categoria, seq_candidatura)`, o atributo `status` depende da totalidade da chave composta.
-3. **Terceira Forma Normal (3FN):**
-   * O esquema está em 2FN e não existem dependências transitivas entre atributos não-chave.
-   * Todos os atributos não-chave dependem direta e exclusivamente da chave primária (ex.: na tabela `filme`, `sinopse`, `popularidade` e `release_date` dependem de `tmdb_id`; dados de gênero e streaming foram normalizados em relações próprias).
+1. **1FN:** Todos os atributos são atômicos. O atributo multivalorado de países de origem de um filme foi decomposto na relação `filme_pais_origem (tmdb_id, codigo_pais)`.
+2. **2FN:** Está em 1FN e nenhum atributo não-chave depende de parte de uma chave primária composta (como em `candidatura` e `disponibilidade`).
+3. **3FN:** Está em 2FN e todos os atributos não-chave dependem exclusivamente e diretamente da chave primária (sem dependências transitivas).
 
 ---
 
