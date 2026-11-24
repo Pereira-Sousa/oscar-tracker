@@ -1,5 +1,12 @@
 // Controle de Modais e Requisicoes Assincronas (Funcao C2)
 
+function aplicarFallbackPoster(img, titulo) {
+    if (!img) return;
+    img.onerror = null;
+    const nome = titulo || img.alt || "Oscar Tracker";
+    img.src = `data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='500' height='750' viewBox='0 0 500 750'%3E%3Crect fill='%230f172a' width='500' height='750'/%3E%3Crect x='20' y='20' width='460' height='710' rx='16' fill='none' stroke='%23d4af37' stroke-width='2' stroke-opacity='0.4'/%3E%3Ctext fill='%23d4af37' font-family='system-ui, sans-serif' font-size='22' font-weight='bold' x='50%25' y='48%25' text-anchor='middle'%3E${encodeURIComponent(nome)}%3C/text%3E%3Ctext fill='%2394a3b8' font-family='system-ui, sans-serif' font-size='14' x='50%25' y='53%25' text-anchor='middle'%3EOscar Tracker%3C/text%3E%3C/svg%3E`;
+}
+
 async function abrirModal(tmdbId) {
     const modal = document.getElementById("movieModal");
     const content = document.getElementById("modalContent");
@@ -26,7 +33,7 @@ async function abrirModal(tmdbId) {
                 <!-- Cabecalho: Pôster + Titulo + Scores -->
                 <div class="flex flex-col sm:flex-row gap-6">
                     <div class="w-full sm:w-44 aspect-[2/3] bg-slate-950 rounded-xl overflow-hidden flex-shrink-0 shadow-xl border border-slate-800">
-                        ${f.poster_path ? `<img src="https://image.tmdb.org/t/p/w500${f.poster_path}" alt="${f.titulo}" onerror="this.onerror=null; this.src='data:image/svg+xml;charset=UTF-8,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'500\\' height=\\'750\\'%3E%3Crect fill=\\'%230f172a\\' width=\\'500\\' height=\\'750\\'/%3E%3Ctext fill=\\'%23d4af37\\' font-family=\\'system-ui\\' font-size=\\'20\\' x=\\'50%25\\' y=\\'50%25\\' text-anchor=\\'middle\\'%3E${encodeURIComponent(f.titulo)}%3C/text%3E%3C/svg%3E';" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center text-slate-600">Sem pôster</div>`}
+                        ${f.poster_path ? `<img src="https://image.tmdb.org/t/p/w500${f.poster_path}" alt="${f.titulo}" onerror="aplicarFallbackPoster(this)" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center text-slate-600">Sem pôster</div>`}
                     </div>
 
                     <div class="flex-grow space-y-3">
