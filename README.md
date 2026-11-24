@@ -19,7 +19,7 @@ O **Oscar Tracker** é uma solução centralizada que resolve a dispersão de in
 
 ## 🛠️ Stack Tecnológica
 
-* **Banco de Dados:** [PostgreSQL 16](https://www.postgresql.org/) (Modelagem relacional em 3FN, transações ACID e índices otimizados).
+* **Banco de Dados:** [PostgreSQL 16](https://www.postgresql.org/) (Modelagem relacional normalizada em 3FN, transações ACID e índices otimizados).
 * **Backend:** [Python 3.11+](https://www.python.org/) com [FastAPI](https://fastapi.tiangolo.com/) e driver nativo `psycopg` para execução direta de consultas SQL.
 * **Frontend:** Interface Web leve renderizada pelo servidor com HTML5, Jinja2 e estilização via [Tailwind CSS](https://tailwindcss.com/).
 * **Infraestrutura:** Containerização completa via [Docker Compose](https://docs.docker.com/compose/).
@@ -37,14 +37,14 @@ oscar-tracker/
 │   ├── database.py       # Conexão e pool de sessões PostgreSQL
 │   └── main.py           # Aplicação principal FastAPI e rotas web
 ├── database/
-│   ├── ddl.sql           # Esquema relacional DDL (3FN) e restrições
-│   ├── indices.sql       # Definição dos índices de performance
-│   └── seed.sql          # Carga inicial de categorias, pesos e edições
+│   ├── ddl.sql           # Esquema relacional DDL (3FN), chaves e restrições CHECK
+│   ├── indices.sql       # Índices B-Tree e parciais para otimização de C1 a C4
+│   └── seed.sql          # Carga inicial de edições, categorias e gêneros com pesos
 ├── scripts/
 │   ├── carga_tmdb.py     # Ingestão de filmes, créditos e provedores
 │   ├── carga_omdb.py     # Coleta de notas críticas e prêmios
 │   └── buzz_score.py     # Algoritmo de cálculo do Oscar Buzz Score
-├── docker-compose.yml    # Orquestração do PostgreSQL e serviços
+├── docker-compose.yml    # Orquestração do PostgreSQL e volumes
 ├── requirements.txt      # Dependências Python
 ├── .env.example          # Modelo de variáveis de ambiente
 └── README.md             # Documentação do projeto
@@ -52,28 +52,96 @@ oscar-tracker/
 
 ---
 
-## 🚀 Como Executar
+## 🚀 Como Inicializar o Projeto (Passo a Passo)
 
 ### 1. Pré-requisitos
-* Git
-* Python 3.11+
-* Docker & Docker Compose (ou instância PostgreSQL local)
+* Git instalado
+* Docker e Docker Compose instalados (Recomendado) **OU** PostgreSQL 16 instalado localmente
+* Python 3.11+ (para execução da aplicação e scripts)
 
-### 2. Configuração do Ambiente
-Clone o repositório e crie o arquivo de variáveis de ambiente:
+---
+
+### 2. Configuração das Variáveis de Ambiente
+Copie o arquivo de exemplo `.env.example` para `.env`:
 ```bash
 cp .env.example .env
 ```
-Preencha no `.env` suas credenciais do PostgreSQL e as chaves de API da **TMDB** e **OMDb**.
+Abra o arquivo `.env` e configure suas variáveis:
+```ini
+# Configurações do Banco de Dados
+POSTGRES_USER=oscar_user
+POSTGRES_PASSWORD=oscar_secret
+POSTGRES_DB=oscar_tracker
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
 
-### 3. Inicialização com Docker Compose
-```bash
-# Sobe o banco de dados PostgreSQL
-docker compose up -d
-
-# Executa as migrações/DDL inicial e scripts de carga
-# (Instruções detalhadas serão adicionadas a cada etapa)
+# Chaves das APIs Públicas (TMDB e OMDb)
+TMDB_API_KEY=sua_chave_aqui
+OMDB_API_KEY=sua_chave_aqui
 ```
+
+---
+
+### 3. Inicialização do Banco de Dados
+
+#### Opção A: Via Docker Compose (Mais Rápido e Isolado)
+O `docker-compose.yml` já está configurado para inicializar automaticamente o PostgreSQL 16 e executar todos os scripts na ordem correta (`01_ddl.sql`, `02_indices.sql` e `03_seed.sql`):
+```bash
+docker compose up -d
+```
+Para verificar se o container está rodando:
+```bash
+docker compose ps
+```
+Para conferir os logs do banco:
+```bash
+docker compose logs -f db
+```
+
+#### Opção B: Via PostgreSQL Local (psql)
+Caso prefira usar o PostgreSQL instalado na sua máquina:
+1. Crie o banco de dados:
+   ```sql
+   CREATE DATABASE oscar_tracker;
+   ```
+2. Execute os scripts na ordem:
+   ```bash
+   psql -U oscar_user -d oscar_tracker -f database/ddl.sql
+   psql -U oscar_user -d oscar_tracker -f database/indices.sql
+   psql -U oscar_user -d oscar_tracker -f database/seed.sql
+   ```
+
+---
+
+### 4. Instalação das Dependências Python
+Crie um ambiente virtual e instale os pacotes:
+```bash
+# Criar e ativar o ambiente virtual
+python -m venv venv
+
+# No Windows (PowerShell):
+.\venv\Scripts\Activate.ps1
+# No Linux/macOS:
+source venv/bin/activate
+
+# Instalar dependências
+pip install -r requirements.txt
+```
+
+---
+
+## 📐 Projeto de Dados & Normalização (3FN)
+
+O esquema relacional implementado em `database/ddl.sql` segue rigorosamente a **Terceira Forma Normal (3FN)**:
+1. **Primeira Forma Normal (1FN):**
+   * Todos os atributos são atômicos.
+   * O atributo multivalorado de países de origem de um filme foi decomposto na tabela associativa `filme_pais_origem (tmdb_id, codigo_pais)`.
+2. **Segunda Forma Normal (2FN):**
+   * O esquema está em 1FN e nenhum atributo não-chave depende de parte de uma chave primária composta.
+   * Em entidades fracas e associativas como `candidatura (tmdb_id, id_categoria, seq_candidatura)`, o atributo `status` depende da totalidade da chave composta.
+3. **Terceira Forma Normal (3FN):**
+   * O esquema está em 2FN e não existem dependências transitivas entre atributos não-chave.
+   * Todos os atributos não-chave dependem direta e exclusivamente da chave primária (ex.: na tabela `filme`, `sinopse`, `popularidade` e `release_date` dependem de `tmdb_id`; dados de gênero e streaming foram normalizados em relações próprias).
 
 ---
 
@@ -82,7 +150,7 @@ docker compose up -d
 Este repositório adota um fluxo de trabalho baseado em branches de funcionalidade para garantir rastreabilidade e integridade do código:
 * `main`: Branch de produção / código estável e auditado.
 * `feature/<nome-da-etapa>`: Cópias temporárias derivadas de `main` onde o desenvolvimento de cada entrega/módulo é realizado.
-* **Regra de Integração:** Nenhuma alteração é comitada diretamente na `main`. Todo novo recurso é desenvolvido em uma branch de funcionalidade e integrado à `main` via merge formal.
+* **Regra de Integração:** Nenhuma alteração é comitada diretamente na `main`. Todo novo recurso é desenvolvido em uma branch de funcionalidade e integrado à `main` via merge formal (`git merge --no-ff`).
 
 ---
 
