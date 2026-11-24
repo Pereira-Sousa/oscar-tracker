@@ -1,0 +1,2 @@
+-- Scripts de criação de índices
+-- Será implementado na próxima etapa técnica

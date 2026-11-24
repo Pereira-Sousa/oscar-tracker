@@ -1,0 +1,2 @@
+-- Carga inicial das tabelas de referência
+-- Será implementado na próxima etapa técnica

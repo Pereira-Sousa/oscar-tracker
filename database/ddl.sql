@@ -1,0 +1,2 @@
+-- DDL do Banco de Dados Oscar Tracker (PostgreSQL)
+-- Será implementado na próxima etapa técnica
