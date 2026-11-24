@@ -9,10 +9,11 @@
 
 O **Oscar Tracker** é uma solução centralizada que resolve a dispersão de informações durante a temporada de premiações cinematográficas. O sistema cataloga longas-metragens elegíveis ao Oscar a partir de dados públicos (TMDB e OMDb), acompanha onde cada obra está disponível no mercado brasileiro (streaming, aluguel e compra) e consolida a probabilidade competitiva de cada produção por meio de uma métrica proprietária: o **Oscar Buzz Score**.
 
-### Principais Funcionalidades
-* **Linha do Tempo da Temporada (C1):** Exibição cronológica dos filmes elegíveis mês a mês, separando obras já lançadas de estreias futuras, com filtros combinados por plataforma de streaming, gênero e faixa de nota.
-* **Ficha Técnica & Curadoria (C2):** Visão detalhada de cada título com sinopse, notas consolidadas (IMDb e Metascore), algoritmo do Oscar Buzz Score, elenco principal, direção e plataformas disponíveis no Brasil.
+### Principais Funcionalidades Implementadas
+* **Linha do Tempo da Temporada (C1):** Exibição cronológica dos filmes elegíveis mês a mês, separando obras já lançadas de estreias futuras, com filtros combinados por plataforma de streaming, gênero, faixa de nota e ordenações via índice.
+* **Ficha Técnica & Curadoria (C2):** Modal interativo exibindo sinopse, notas consolidadas (IMDb e Metascore), decomposição do Oscar Buzz Score, elenco principal (Top 10), direção e catálogo onde assistir no Brasil.
 * **Radar de Premiações (C3):** Acompanhamento em tempo real das categorias do Oscar (filme e individuais), exibindo profissionais e títulos cotados, indicados oficiais e vencedores.
+* **Opções de Filtro Dinâmicas (C4):** Listas consolidadas diretamente do banco com edições, gêneros, plataformas e categorias.
 * **Ingestão Automatizada de Dados (A5/A6/A7):** Sincronização e cruzamento periódico entre a API do TMDB e da OMDb com garantias transacionais e tolerância a falhas.
 
 ---
@@ -20,8 +21,8 @@ O **Oscar Tracker** é uma solução centralizada que resolve a dispersão de in
 ## 🛠️ Stack Tecnológica
 
 * **Banco de Dados:** [PostgreSQL 16](https://www.postgresql.org/) (Modelagem relacional normalizada em 3FN, transações ACID e índices otimizados).
-* **Backend:** [Python 3.11+](https://www.python.org/) com [FastAPI](https://fastapi.tiangolo.com/) e driver nativo `psycopg` para execução direta de consultas SQL.
-* **Frontend:** Interface Web leve renderizada pelo servidor com HTML5, Jinja2 e estilização via [Tailwind CSS](https://tailwindcss.com/).
+* **Backend:** [Python 3.11+](https://www.python.org/) com [FastAPI](https://fastapi.tiangolo.com/) e driver nativo `psycopg` para execução direta de consultas SQL (sem ORM ocultando a lógica).
+* **Frontend:** Interface Web leve renderizada pelo servidor com HTML5, Jinja2 e estilização moderna via [Tailwind CSS](https://tailwindcss.com/) e [Lucide Icons](https://lucide.dev/).
 * **Infraestrutura:** Containerização completa via [Docker Compose](https://docs.docker.com/compose/).
 
 ---
@@ -31,11 +32,11 @@ O **Oscar Tracker** é uma solução centralizada que resolve a dispersão de in
 ```text
 oscar-tracker/
 ├── app/
-│   ├── static/           # Arquivos estáticos (CSS customizado, imagens)
-│   ├── templates/        # Templates Jinja2 (HTML + Tailwind CSS)
+│   ├── static/           # Arquivos estáticos (CSS customizado, JS assíncrono para o modal C2)
+│   ├── templates/        # Templates Jinja2 (base.html, index.html, radar.html)
 │   ├── config.py         # Configurações e variáveis de ambiente
-│   ├── database.py       # Conexão e pool de sessões PostgreSQL
-│   └── main.py           # Aplicação principal FastAPI e rotas web
+│   ├── database.py       # Conexão e pool de sessões PostgreSQL (psycopg3)
+│   └── main.py           # Aplicação FastAPI com consultas SQL nativas (C1, C2, C3, C4)
 ├── database/
 │   ├── ddl.sql           # Esquema relacional DDL (3FN), chaves e restrições CHECK
 │   ├── indices.sql       # Índices B-Tree e parciais para otimização de C1 a C4
@@ -53,51 +54,31 @@ oscar-tracker/
 
 ---
 
-## 🚀 Como Inicializar o Projeto (Passo a Passo)
+## 🚀 Como Executar em Máquina Limpa (Passo a Passo)
 
-### 1. Pré-requisitos
-* Git instalado
-* Docker e Docker Compose instalados (Recomendado) **OU** PostgreSQL 16 local
-* Python 3.11+ (para execução da aplicação e scripts)
-
----
-
-### 2. Configuração das Variáveis de Ambiente
-Copie o arquivo de exemplo `.env.example` para `.env`:
+### 1. Clonar o Repositório e Configurar Ambiente
 ```bash
+git clone https://github.com/Pereira-Sousa/oscar-tracker.git
+cd oscar-tracker
+
+# Copiar arquivo de variáveis de ambiente
 cp .env.example .env
 ```
-Abra o arquivo `.env` e configure suas variáveis:
-```ini
-# Configurações do Banco de Dados
-POSTGRES_USER=oscar_user
-POSTGRES_PASSWORD=oscar_secret
-POSTGRES_DB=oscar_tracker
-POSTGRES_HOST=localhost
-POSTGRES_PORT=5432
-
-# Chaves das APIs Públicas (Necessárias apenas para carga --live)
-TMDB_API_KEY=sua_chave_aqui
-OMDB_API_KEY=sua_chave_aqui
-```
 
 ---
 
-### 3. Inicialização do Banco de Dados
+### 2. Inicializar o Banco de Dados (PostgreSQL 16)
 
-#### Opção A: Via Docker Compose (Recomendado)
-O `docker-compose.yml` inicializa automaticamente o PostgreSQL 16 e executa os scripts na ordem correta (`01_ddl.sql`, `02_indices.sql` e `03_seed.sql`):
+#### Opção A: Via Docker Compose (Mais Recomendado)
+O `docker-compose.yml` inicializa automaticamente o PostgreSQL 16 e executa na primeira inicialização o DDL (`01_ddl.sql`), os índices (`02_indices.sql`) e a carga inicial de referência (`03_seed.sql`):
 ```bash
 docker compose up -d
 ```
 
-#### Opção B: Via PostgreSQL Local (psql)
-Caso utilize uma instância local do PostgreSQL:
+#### Opção B: Via PostgreSQL Local
+Caso possua PostgreSQL local instalado:
 ```bash
-# 1. Criação do banco
 createdb -U postgres oscar_tracker
-
-# 2. Execução das migrações e sementes
 psql -U postgres -d oscar_tracker -f database/ddl.sql
 psql -U postgres -d oscar_tracker -f database/indices.sql
 psql -U postgres -d oscar_tracker -f database/seed.sql
@@ -105,8 +86,7 @@ psql -U postgres -d oscar_tracker -f database/seed.sql
 
 ---
 
-### 4. Instalação das Dependências Python
-Crie um ambiente virtual e instale os pacotes:
+### 3. Instalar Dependências Python
 ```bash
 python -m venv venv
 
@@ -121,21 +101,32 @@ pip install -r requirements.txt
 
 ---
 
-### 5. Execução dos Scripts de Carga e Ingestão de Dados
+### 4. Popular o Banco de Dados
 
-O projeto conta com um script CLI unificado para popular o banco de dados:
-
-#### A. Modo Demonstração / Avaliação Rápida (`--demo`)
-> **Ideal para correção e testes em máquina limpa:** Popula o banco com uma amostra rica e fidedigna de obras concorrentes da temporada atual (Duna: Parte 2, Anora, Conclave, O Brutalista, Divertida Mente 2) com créditos reais, disponibilidade em streaming no Brasil e candidaturas associadas:
+#### A. Carga Imediata de Avaliação (`--demo`)
+> **Recomendado para correção imediata do trabalho:** Popula o banco com obras reais da temporada 2026 (Duna: Parte 2, Anora, Conclave, O Brutalista, Divertida Mente 2) com notas, streamings no Brasil, elenco e candidaturas:
 ```bash
 python scripts/executar_carga.py --demo
 ```
 
-#### B. Modo em Tempo Real / APIs (`--live`)
-Consome diretamente os endpoints oficiais da **TMDB API** e **OMDb API**:
+#### B. Carga em Tempo Real via APIs (`--live`)
+Caso informe suas chaves no `.env` (`TMDB_API_KEY` e `OMDB_API_KEY`):
 ```bash
 python scripts/executar_carga.py --ano 2026
 ```
+
+---
+
+### 5. Iniciar a Aplicação Web
+```bash
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+Acesse no seu navegador:  
+👉 **`http://localhost:8000`**
+
+* **`/`** — Painel Linha do Tempo da Temporada (Função C1 e filtros C4) e Modal da Ficha Técnica (Função C2).
+* **`/radar`** — Radar Oficial de Premiações por Categoria (Função C3).
+* **`/api/filmes/{tmdb_id}`** — Retorno em JSON estruturado da ficha técnica completa.
 
 ---
 
@@ -152,9 +143,6 @@ $$\text{Score} = \frac{\sum (Peso_i \times Valor_i)}{\sum Peso_i}$$
 | **G (Gênero)** | Afinidade Histórica | 0.20 | Média dos pesos dos gêneros da obra $\times 100$ |
 | **A (Público)** | Nota IMDb | 0.15 | $\text{imdb\_rating} \times 10$ |
 | **P (Popularidade)**| TMDB Popularity | 0.10 | $\min\left(100, \frac{\ln(1 + \text{pop})}{\ln(1 + 500)} \times 100\right)$ |
-
-* **Garantia de Existência:** Como Gênero (G) e Popularidade (P) sempre existem, o denominador nunca é nulo.
-* **Materialização:** O valor calculado é armazenado diretamente na coluna `filme.oscar_buzz_score` e indexado via B-Tree para ordenação rápida das consultas do painel.
 
 ---
 
