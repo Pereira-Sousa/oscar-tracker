@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="space-y-8">
+
+    <!-- Topo: Hero Radar -->
+    <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-6 border-b border-slate-800/80">
+        <div>
+            <div class="flex items-center space-x-2 text-amber-400 text-xs font-mono font-semibold uppercase tracking-wider mb-1">
+                <span>Função C3</span>
+                <span>•</span>
+                <span>Radar Oficial de Premiações</span>
+            </div>
+            <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">Radar por Categoria</h1>
+            <p class="text-sm text-slate-400 mt-1 max-w-2xl">
+                Acompanhe a corrida pelas estatuetas dividida por categoria da Academia: veja os filmes e profissionais <strong class="text-amber-400">Cotados</strong>, <strong class="text-blue-400">Indicados Oficiais</strong> e <strong class="text-emerald-400">Vencedores</strong>.
+            </p>
+        </div>
+
+        <!-- Filtro rapido de Categoria -->
+        <form method="GET" action="/radar" class="flex items-center space-x-3">
+            <select name="categoria" onchange="this.form.submit()" class="bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-amber-500">
+                <option value="">Todas as Categorias</option>
+                {% for cat in opcoes.categorias %}
+                <option value="{{ cat.id_categoria }}" {% if categoria_selecionada == cat.id_categoria %}selected{% endif %}>{{ cat.nome }} ({{ cat.escopo }})</option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+
+    <!-- Categorias e seus Candidatos -->
+    <div class="space-y-8">
+        {% for cat in categorias_radar %}
+        <div class="bg-slate-900 border border-slate-800/90 rounded-2xl p-6 shadow-xl">
+            
+            <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+                <div class="flex items-center space-x-3">
+                    <span class="p-2 bg-amber-500/10 border border-amber-500/30 rounded-lg text-amber-400">
+                        <i data-lucide="award" class="w-5 h-5"></i>
+                    </span>
+                    <div>
+                        <h2 class="text-xl font-bold text-white">{{ cat.nome }}</h2>
+                        <span class="text-xs uppercase tracking-wider text-slate-500 font-mono">
+                            Escopo: {{ cat.escopo }} {% if cat.funcao_exigida %}· Exige: {{ cat.funcao_exigida }}{% endif %}
+                        </span>
+                    </div>
+                </div>
+                <span class="text-xs font-semibold px-2.5 py-1 bg-slate-800 text-slate-300 rounded-full font-mono">
+                    {{ cat.total }} concorrentes
+                </span>
+            </div>
+
+            <!-- Lista de Candidatos da Categoria -->
+            {% if cat.candidaturas %}
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-4">
+                {% for cand in cat.candidaturas %}
+                <div onclick="abrirModal({{ cand.tmdb_id }})" class="cursor-pointer bg-slate-950 border border-slate-800/80 hover:border-amber-500/40 p-3.5 rounded-xl flex items-center space-x-3 hover:bg-slate-800/50 transition-all">
+                    
+                    <!-- Poster Miniatura -->
+                    <div class="w-12 h-16 bg-slate-900 rounded-lg overflow-hidden flex-shrink-0">
+                        {% if cand.poster_path %}
+                        <img src="https://image.tmdb.org/t/p/w185{{ cand.poster_path }}" alt="{{ cand.titulo }}" class="w-full h-full object-cover">
+                        {% else %}
+                        <div class="w-full h-full flex items-center justify-center text-slate-700">
+                            <i data-lucide="film" class="w-5 h-5"></i>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Dados do Concorrente -->
+                    <div class="flex-grow min-w-0">
+                        <div class="flex items-center justify-between">
+                            <!-- Status Badge -->
+                            {% if cand.status == 'VENCEDOR' %}
+                            <span class="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded font-black uppercase tracking-wider">
+                                🏆 Vencedor
+                            </span>
+                            {% elif cand.status == 'INDICADO' %}
+                            <span class="text-[10px] bg-blue-500/20 text-blue-300 border border-blue-500/40 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+                                🎖️ Indicado
+                            </span>
+                            {% else %}
+                            <span class="text-[10px] bg-slate-800 text-slate-400 border border-slate-700 px-2 py-0.5 rounded font-medium uppercase tracking-wider">
+                                🔮 Cotado
+                            </span>
+                            {% endif %}
+
+                            <!-- Buzz Score -->
+                            <span class="text-xs font-mono font-bold text-amber-400">
+                                {{ "%.1f"|format(cand.oscar_buzz_score) }}
+                            </span>
+                        </div>
+
+                        <!-- Titulo e Profissional -->
+                        <h4 class="font-bold text-sm text-white truncate mt-1">{{ cand.titulo }}</h4>
+                        {% if cand.profissional_nome %}
+                        <p class="text-xs text-amber-300/80 truncate">{{ cand.profissional_nome }}</p>
+                        {% else %}
+                        <p class="text-xs text-slate-500 truncate">{{ cand.titulo_original }}</p>
+                        {% endif %}
+                    </div>
+
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-xs text-slate-500 italic pt-4">Nenhuma candidatura registrada para esta categoria até o momento.</p>
+            {% endif %}
+
+        </div>
+        {% endfor %}
+    </div>
+
+</div>
+{% endblock %}
