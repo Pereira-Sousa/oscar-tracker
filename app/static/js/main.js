@@ -26,7 +26,7 @@ async function abrirModal(tmdbId) {
                 <!-- Cabecalho: Pôster + Titulo + Scores -->
                 <div class="flex flex-col sm:flex-row gap-6">
                     <div class="w-full sm:w-44 aspect-[2/3] bg-slate-950 rounded-xl overflow-hidden flex-shrink-0 shadow-xl border border-slate-800">
-                        ${f.poster_path ? `<img src="https://image.tmdb.org/t/p/w500${f.poster_path}" alt="${f.titulo}" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center text-slate-600">Sem pôster</div>`}
+                        ${f.poster_path ? `<img src="https://image.tmdb.org/t/p/w500${f.poster_path}" alt="${f.titulo}" onerror="this.onerror=null; this.src='data:image/svg+xml;charset=UTF-8,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'500\\' height=\\'750\\'%3E%3Crect fill=\\'%230f172a\\' width=\\'500\\' height=\\'750\\'/%3E%3Ctext fill=\\'%23d4af37\\' font-family=\\'system-ui\\' font-size=\\'20\\' x=\\'50%25\\' y=\\'50%25\\' text-anchor=\\'middle\\'%3E${encodeURIComponent(f.titulo)}%3C/text%3E%3C/svg%3E';" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center text-slate-600">Sem pôster</div>`}
                     </div>
 
                     <div class="flex-grow space-y-3">
@@ -77,12 +77,12 @@ async function abrirModal(tmdbId) {
                     ${f.streamings && f.streamings.length > 0 ? `
                         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
                             ${f.streamings.map(st => `
-                                <div class="bg-slate-950 border border-slate-800/90 p-2 rounded-lg flex items-center space-x-2">
-                                    ${st.logo_path ? `<img src="https://image.tmdb.org/t/p/w92${st.logo_path}" alt="${st.nome}" class="w-7 h-7 rounded object-cover">` : ''}
+                                <div class="bg-slate-950 border border-slate-800/90 p-2.5 rounded-lg flex items-center justify-between">
                                     <div class="min-w-0">
                                         <p class="text-xs font-bold text-white truncate">${st.nome}</p>
                                         <span class="text-[10px] text-amber-400 font-semibold uppercase tracking-wider">${st.modalidade}</span>
                                     </div>
+                                    <span class="text-[10px] bg-slate-800 text-slate-300 font-mono px-2 py-0.5 rounded border border-slate-700">Brasil</span>
                                 </div>
                             `).join('')}
                         </div>

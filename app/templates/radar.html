@@ -59,7 +59,7 @@
                     <!-- Poster Miniatura -->
                     <div class="w-12 h-16 bg-slate-900 rounded-lg overflow-hidden flex-shrink-0">
                         {% if cand.poster_path %}
-                        <img src="https://image.tmdb.org/t/p/w185{{ cand.poster_path }}" alt="{{ cand.titulo }}" class="w-full h-full object-cover">
+                        <img src="https://image.tmdb.org/t/p/w185{{ cand.poster_path }}" alt="{{ cand.titulo }}" onerror="this.onerror=null; this.src='data:image/svg+xml;charset=UTF-8,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'185\' height=\'278\' viewBox=\'0 0 185 278\'%3E%3Crect fill=\'%230f172a\' width=\'185\' height=\'278\'/%3E%3Ctext fill=\'%23d4af37\' font-family=\'system-ui\' font-size=\'14\' font-weight=\'bold\' x=\'50%25\' y=\'50%25\' text-anchor=\'middle\'%3E${cand.titulo|replace(\"'\", \"\")}%3C/text%3E%3C/svg%3E';" class="w-full h-full object-cover">
                         {% else %}
                         <div class="w-full h-full flex items-center justify-center text-slate-700">
                             <i data-lucide="film" class="w-5 h-5"></i>
